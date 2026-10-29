@@ -83,7 +83,20 @@ def slugify(text: str) -> str:
     return text.strip()
 
 
+# Site footer/UI strings are short. Longer text is real content even if it
+# mentions one of the fragments (e.g. a preface naming Living Stream Ministry).
+MAX_BOILERPLATE_LENGTH = 200
+
+# Short nav lines to skip. Listen/Back/Show/Hide must be the whole line (plus
+# at most one word) so headings like "Back to the cross!" are kept.
+NAV_LINE = re.compile(
+    r"^(←|→|ch\.|\d+\s*/|\s*ch\s+\d)|^(Listen|Back|Show|Hide)\b(\s+\w+)?$", re.I
+)
+
+
 def is_boilerplate(text: str) -> bool:
+    if len(text) > MAX_BOILERPLATE_LENGTH:
+        return False
     return any(frag in text for frag in BOILERPLATE_FRAGMENTS)
 
 
@@ -254,9 +267,7 @@ def scrape_page(page_url: str) -> str:
         if is_boilerplate(text):
             break
 
-        if len(text) < 50 and re.match(
-            r"^(←|→|ch\.|Listen|Back|Show|Hide|\d+\s*/|\s*ch\s+\d)", text, re.I
-        ):
+        if len(text) < 50 and NAV_LINE.match(text):
             continue
 
         if tag in {"h1", "h2", "h3", "h4"}:
