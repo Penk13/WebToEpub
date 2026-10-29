@@ -69,7 +69,7 @@ _SKIP_TEXT_PATTERNS = [
     re.compile(r"my study of the bible",            re.I),
     re.compile(r"write about error",                re.I),
     re.compile(r"show header|hide header",          re.I),
-    re.compile(r"bookmarks|my readings|today.*?reading", re.I),
+    re.compile(r"^(bookmarks|my readings|today.?s reading)$", re.I),
     re.compile(r"^(NT|OT|С)$"),
     re.compile(r"Ru\s+Библия|Biblia leer|閱讀中文聖經", re.I),
     re.compile(r"Living Stream Ministry",           re.I),
@@ -92,7 +92,14 @@ _FOOTER_SENTINELS = [
 ]
 
 
+# Site UI strings are short. Longer text is real content even if it happens
+# to contain a nav phrase (e.g. "today ... reading" in a sermon paragraph).
+_MAX_NAV_LENGTH = 200
+
+
 def _is_nav_text(text: str) -> bool:
+    if len(text) > _MAX_NAV_LENGTH:
+        return False
     return any(p.search(text) for p in _SKIP_TEXT_PATTERNS)
 
 
