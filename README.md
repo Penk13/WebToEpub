@@ -73,6 +73,7 @@ Previously generated EPUBs, moved here after each run:
 
 | Folder | Content | Files |
 |---|---|---|
+| `life-study-of-deuteronomy/` | Life-Study of Deuteronomy | 30 |
 | `life-study-of-exodus/` | Life-Study of Exodus | 185 |
 | `life-study-of-hebrews/` | Life-Study of Hebrews | 69 |
 | `life-study-of-romans/` | Life-Study of Romans | 69 |
