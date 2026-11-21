@@ -6,6 +6,7 @@ Every EPUB has the same layout:
   nav / ncx       reader TOC: the title, then headings nested by level
 """
 
+import os
 from html import escape
 from pathlib import Path
 
@@ -147,4 +148,11 @@ def build_epub(series: Series, ch: Chapter, out_path: Path) -> None:
     )
     # Opens on the contents page; the reader's own nav page is not in the spine.
     book.spine = [contents, chapter]
-    epub.write_epub(str(out_path), book, {})
+    # Write to a temp name, then rename: an interrupted run never leaves a
+    # half-written NNN-*.epub that --skip-existing would treat as done.
+    tmp_path = out_path.with_name(out_path.name + ".tmp")
+    try:
+        epub.write_epub(str(tmp_path), book, {})
+        os.replace(tmp_path, out_path)
+    finally:
+        tmp_path.unlink(missing_ok=True)

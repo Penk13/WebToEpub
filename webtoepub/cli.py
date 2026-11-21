@@ -114,7 +114,12 @@ def run(source: Source, args: argparse.Namespace) -> int:
             skipped += 1
             continue
         soup = fetcher.soup(ref.url)
-        blocks = extract_blocks(soup, source.skip) if soup is not None else []
+        if soup is None:
+            # No file: a placeholder EPUB would make --skip-existing skip this page forever.
+            failed += 1
+            log.error("[%d/%d] %03d fetch failed; no EPUB written", i, len(refs), ref.number)
+            continue
+        blocks = extract_blocks(soup, source.skip)
         chapter = source.finish(ref, blocks)
         if not chapter.blocks:
             empty += 1
