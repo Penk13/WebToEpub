@@ -21,11 +21,14 @@ Output:
 import re
 import sys
 import time
+from html import escape
 import logging
 from pathlib import Path
 from urllib.parse import urljoin, urlparse
 
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 from bs4 import BeautifulSoup, Tag
 from ebooklib import epub
 
@@ -35,7 +38,6 @@ from ebooklib import epub
 
 REQUEST_DELAY = 1.0          # seconds between HTTP requests
 REQUEST_TIMEOUT = 20         # seconds before a request times out
-MAX_RETRIES = 0              # no retries — skip on first failure (per spec)
 HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -56,12 +58,29 @@ log = logging.getLogger(__name__)
 # Helpers
 # ──────────────────────────────────────────────────────────────────────────────
 
+# One shared session: reuses connections and retries transient failures
+# (connection errors, read timeouts, 429/5xx) with exponential backoff.
+_RETRY = Retry(
+    total=3,
+    backoff_factor=2,
+    status_forcelist=(429, 500, 502, 503, 504),
+    allowed_methods=frozenset({"GET"}),
+)
+SESSION = requests.Session()
+SESSION.headers.update(HEADERS)
+SESSION.mount("https://", HTTPAdapter(max_retries=_RETRY))
+SESSION.mount("http://", HTTPAdapter(max_retries=_RETRY))
+
+
 def fetch(url: str) -> BeautifulSoup | None:
     """Fetch a URL and return a BeautifulSoup object, or None on failure."""
     try:
-        r = requests.get(url, headers=HEADERS, timeout=REQUEST_TIMEOUT)
+        r = SESSION.get(url, timeout=REQUEST_TIMEOUT)
         r.raise_for_status()
-        return BeautifulSoup(r.text, "html.parser")
+        # Pass raw bytes so BeautifulSoup sniffs the page's declared encoding.
+        # Using r.text trusts requests' HTTP-header guess, which defaults to
+        # latin-1 when no charset header exists and produces mojibake (God�s).
+        return BeautifulSoup(r.content, "html.parser")
     except Exception as exc:
         log.warning("⚠  Failed to fetch %s — %s", url, exc)
         return None
@@ -131,7 +150,7 @@ def _extract_series_title(soup: BeautifulSoup, index_url: str) -> str:
     if h1:
         return h1.get_text(strip=True)
     if soup.title:
-        parts = soup.title.string.split("|")
+        parts = soup.title.get_text().split("|")
         if len(parts) >= 2:
             return parts[-1].strip()
     slug = series_slug_from_url(index_url)
@@ -278,10 +297,10 @@ def scrape_message_body(url: str, msg_number: int) -> tuple[str, list[dict]]:
 
             # Emit with anchor id so TOC links jump here
             content_blocks.append(
-                f'<{tag.name} id="{anchor_id}">{text}</{tag.name}>'
+                f'<{tag.name} id="{anchor_id}">{escape(text)}</{tag.name}>'
             )
         else:
-            content_blocks.append(f"<p>{text}</p>")
+            content_blocks.append(f"<p>{escape(text)}</p>")
 
     return "\n".join(content_blocks), headings
 
@@ -368,7 +387,7 @@ def _build_toc_page(
             indent_style = f"margin-left:{indent * 1.5}em;" if indent > 0 else ""
             items_html.append(
                 f'<p class="toc-entry" style="{indent_style}">'
-                f'<a href="chapter.xhtml#{h["anchor_id"]}">{h["text"]}</a>'
+                f'<a href="chapter.xhtml#{h["anchor_id"]}">{escape(h["text"])}</a>'
                 f'</p>'
             )
         toc_body = "\n  ".join(items_html)
@@ -380,7 +399,7 @@ def _build_toc_page(
   "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
-  <title>Contents — {msg['title']}</title>
+  <title>Contents — {escape(msg['title'])}</title>
   <link rel="stylesheet" type="text/css" href="../style/main.css"/>
   <style type="text/css">
     .toc-title   {{ font-size: 1.1em; font-weight: bold; margin: 0 0 0.2em 0; }}
@@ -394,8 +413,8 @@ def _build_toc_page(
   </style>
 </head>
 <body>
-  <p class="toc-title"><a href="chapter.xhtml#msg-title">{msg_title_str}</a></p>
-  <p class="toc-series"><em>{series_title}</em></p>
+  <p class="toc-title"><a href="chapter.xhtml#msg-title">{escape(msg_title_str)}</a></p>
+  <p class="toc-series"><em>{escape(series_title)}</em></p>
   <p class="toc-heading">Contents</p>
   {toc_body}
 </body>
@@ -455,12 +474,12 @@ def build_epub(
   "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
-  <title>{msg['title']}</title>
+  <title>{escape(msg['title'])}</title>
   <link rel="stylesheet" type="text/css" href="../style/main.css"/>
 </head>
 <body>
-  <h1 id="msg-title">Message {msg['number']:03d}: {msg['title']}</h1>
-  <p><em>{series_title}</em></p>
+  <h1 id="msg-title">Message {msg['number']:03d}: {escape(msg['title'])}</h1>
+  <p><em>{escape(series_title)}</em></p>
   <hr/>
   {body_html}
 </body>

@@ -21,11 +21,14 @@ Output:
 import re
 import sys
 import time
+from html import escape
 import logging
 from pathlib import Path
 from urllib.parse import urljoin, urlparse
 
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 from bs4 import BeautifulSoup
 from ebooklib import epub
 
@@ -111,11 +114,26 @@ def _is_footer(text: str) -> bool:
 # Helpers
 # ──────────────────────────────────────────────────────────────────────────────
 
+# One shared session: reuses connections and retries transient failures
+# (connection errors, read timeouts, 429/5xx) with exponential backoff.
+_RETRY = Retry(
+    total=3,
+    backoff_factor=2,
+    status_forcelist=(429, 500, 502, 503, 504),
+    allowed_methods=frozenset({"GET"}),
+)
+SESSION = requests.Session()
+SESSION.headers.update(HEADERS)
+SESSION.mount("https://", HTTPAdapter(max_retries=_RETRY))
+SESSION.mount("http://", HTTPAdapter(max_retries=_RETRY))
+
+
 def fetch(url: str) -> BeautifulSoup | None:
     try:
-        r = requests.get(url, headers=HEADERS, timeout=REQUEST_TIMEOUT)
+        r = SESSION.get(url, timeout=REQUEST_TIMEOUT)
         r.raise_for_status()
-        return BeautifulSoup(r.text, "html.parser")
+        # Raw bytes → BeautifulSoup sniffs declared encoding (avoids mojibake).
+        return BeautifulSoup(r.content, "html.parser")
     except Exception as exc:
         log.warning("⚠  Failed to fetch %s — %s", url, exc)
         return None
@@ -257,9 +275,9 @@ def scrape_chapter_body(url: str) -> str:
         seen_texts.add(key)
 
         if tag.name in ("h1", "h2", "h3", "h4"):
-            content_blocks.append(f"<{tag.name}>{text}</{tag.name}>")
+            content_blocks.append(f"<{tag.name}>{escape(text)}</{tag.name}>")
         else:
-            content_blocks.append(f"<p>{text}</p>")
+            content_blocks.append(f"<p>{escape(text)}</p>")
 
     return "\n".join(content_blocks)
 
@@ -320,12 +338,12 @@ def build_epub(
   "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
-  <title>{title}</title>
+  <title>{escape(title)}</title>
   <link rel="stylesheet" type="text/css" href="../style/main.css"/>
 </head>
 <body>
-  <h1>Chapter {num:03d}: {title}</h1>
-  <p><em>{book_title}</em></p>
+  <h1>Chapter {num:03d}: {escape(title)}</h1>
+  <p><em>{escape(book_title)}</em></p>
   <hr/>
   {body_html}
 </body>

@@ -29,6 +29,7 @@ Output:
 import re
 import sys
 import time
+from html import escape
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -239,17 +240,17 @@ def scrape_page(soup: BeautifulSoup) -> str:
             continue
 
         if tag == "h1":
-            content_parts.append(f"<h1>{text}</h1>")
+            content_parts.append(f"<h1>{escape(text)}</h1>")
         elif tag == "h2":
-            content_parts.append(f"<h2>{text}</h2>")
+            content_parts.append(f"<h2>{escape(text)}</h2>")
         elif tag == "h3":
-            content_parts.append(f"<h3>{text}</h3>")
+            content_parts.append(f"<h3>{escape(text)}</h3>")
         elif tag == "h4":
-            content_parts.append(f"<h4>{text}</h4>")
+            content_parts.append(f"<h4>{escape(text)}</h4>")
         elif tag == "p":
-            content_parts.append(f"<p>{text}</p>")
+            content_parts.append(f"<p>{escape(text)}</p>")
         elif tag == "blockquote":
-            content_parts.append(f"<blockquote><p>{text}</p></blockquote>")
+            content_parts.append(f"<blockquote><p>{escape(text)}</p></blockquote>")
 
     # Remove consecutive duplicate lines
     deduped: list[str] = []
@@ -289,7 +290,7 @@ def build_toc_page(page_title: str, content_html: str) -> str:
         margin = indent.get(tag, "0")
         rows.append(
             f'    <li style="margin-left:{margin}">'
-            f'<a href="chapter.xhtml#{anchor_id}">{text}</a></li>'
+            f'<a href="chapter.xhtml#{anchor_id}">{escape(text)}</a></li>'
         )
 
     toc_body = "\n".join(rows)
@@ -299,7 +300,7 @@ def build_toc_page(page_title: str, content_html: str) -> str:
         "<!DOCTYPE html>\n"
         '<html xmlns="http://www.w3.org/1999/xhtml">\n'
         "<head>\n"
-        f"  <title>Contents – {page_title}</title>\n"
+        f"  <title>Contents – {escape(page_title)}</title>\n"
         '  <meta charset="utf-8"/>\n'
         "  <style>\n"
         "    body { font-family: sans-serif; margin: 1.5em; line-height: 1.8; }\n"
@@ -385,7 +386,7 @@ def build_epub(
         "<!DOCTYPE html>\n"
         '<html xmlns="http://www.w3.org/1999/xhtml">\n'
         "<head>\n"
-        f"  <title>{page_title}</title>\n"
+        f"  <title>{escape(page_title)}</title>\n"
         '  <meta charset="utf-8"/>\n'
         "  <style>\n"
         "    body       { font-family: serif; margin: 1.5em; line-height: 1.6; }\n"

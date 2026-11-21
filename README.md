@@ -28,10 +28,8 @@ Requires Python 3.10+ (developed on 3.13).
 python -m venv venv
 venv\Scripts\activate          # Windows
 # source venv/bin/activate     # macOS/Linux
-pip install requests beautifulsoup4 lxml EbookLib
+pip install -r requirements.txt
 ```
-
-> `requirements.txt` holds `pip list` output (a table), not `pip freeze` output, so `pip install -r requirements.txt` will fail. Install the packages above by name, or regenerate the file with `pip freeze > requirements.txt`.
 
 ## Usage
 
@@ -62,7 +60,7 @@ Files are named `NNN-Title.epub` (zero-padded message/page number). Run without 
 ### Behaviour notes
 
 - Requests are throttled (1.0–1.5 s between pages) to be polite to the site.
-- A page that fails to download is not retried; the EPUB is still built with a placeholder note, and the run summary reports how many had no body.
+- Failed requests (connection errors, timeouts, HTTP 429/5xx) are retried up to 3 times with backoff. A page that still fails gets an EPUB with a placeholder note, and the run summary reports how many had no body.
 - Scraping depends on bibleread.online's current HTML layout. If the site changes, the noise filters (`_SKIP_TEXT_PATTERNS`, `BOILERPLATE_FRAGMENTS`) or link patterns may need updating.
 
 ## How it works
