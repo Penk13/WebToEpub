@@ -241,6 +241,10 @@ def _is_nav_text(text: str) -> bool:
 
 
 def _is_footer(text: str) -> bool:
+    # Same length guard as _is_nav_text: a long paragraph that mentions
+    # "Living Stream Ministry" is content, not the site footer.
+    if len(text) > _MAX_NAV_LENGTH:
+        return False
     return any(s in text for s in _FOOTER_SENTINELS)
 
 
