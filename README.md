@@ -1,24 +1,13 @@
 # WebToEpub
 
-Python scripts that scrape Christian ministry books from [bibleread.online](https://bibleread.online) and convert them into **one EPUB file per message/chapter**, ready for Kindle or any e-reader app.
+Scrapes Christian ministry books from [bibleread.online](https://bibleread.online) and converts them into **one EPUB file per message/chapter**, ready for Kindle or any e-reader app.
 
-Each EPUB includes:
+Every EPUB has the same layout:
 
-- Clean body text (site navigation, footers, and UI noise stripped)
-- A table-of-contents page that opens first, linking to every heading in the message
-- A nested reader TOC (NCX/Nav) built from the page's `h1`–`h4` headings
-- Metadata: title, author, and Calibre series name + series index, so Calibre groups the files as a series in order
-
-## Scripts
-
-| Script | Source on bibleread.online | Author | Output folder |
-|---|---|---|---|
-| `life-studies.py` | A *Life-Study of the Bible* series index (`/life-study-of-the-bible/<series>/`) | Witness Lee | `./<series-slug>/` |
-| `bibleread-books.py` | Any book under `/all-books-by-Watchman-Nee-and-Witness-Lee/` | Detected from URL | `./<book-slug>/` |
-| `cwwn_vol_1.py` | *Collected Works of Watchman Nee*, Set 1, Vol. 01–02 | Watchman Nee | `./ccwn_vol<NN>/` |
-| `cwwn_vol_12_14.py` | *Collected Works of Watchman Nee*, Set 1, Vol. 12–14 (*The Spiritual Man*) | Watchman Nee | `./ccwn_vol<NN>/` |
-
-`cwwn_vol_12_14.py` reads section and chapter numbers from the index page and shows them above each title. It prints a table first and then **prompts** you to correct any page's section/chapter (`<page> <section> <chapter>`, `0` clears a value; press Enter on a blank line to continue). Vol. 01–02 indexes have no usable section/chapter markers, so `cwwn_vol_1.py` takes titles from each page's first descriptive `<h1>` (skipping bare headings like `CHAPTER ONE`) and does not prompt.
+- Opens on a **contents page** linking to every heading in the message
+- Chapter page: a small kicker line (`Message 6`, `Section Two • Chapter 3`), the title, the series name, then the body text (site navigation, footers and repeated title lines stripped)
+- A nested reader TOC (NCX/Nav) built from the page's headings
+- Metadata: title `NNN - Title`, author, description, and Calibre series + series index, so Calibre and Kindle sort the files in reading order
 
 ## Setup
 
@@ -33,45 +22,70 @@ pip install -r requirements.txt
 
 ## Usage
 
-Pass the index URL of the series/book. EPUBs are written to a folder in the **current directory**.
-
 ```bash
-python life-studies.py https://bibleread.online/life-study-of-the-bible/life-study-of-romans/
+python -m webtoepub <source> <index-url> [options]
 ```
 
-```bash
-python bibleread-books.py https://bibleread.online/all-books-by-Watchman-Nee-and-Witness-Lee/book-abiding-in-the-lord-to-enjoy-his-life-Witness-Lee-read-online/
-```
+| Source | Index URL | Author | Output folder |
+|---|---|---|---|
+| `life-study` | `/life-study-of-the-bible/<series>/` | Witness Lee | `life-study-of-romans/` |
+| `book` | any book under `/all-books-by-Watchman-Nee-and-Witness-Lee/` | detected from URL | `abiding-in-the-lord-to-enjoy-his-life/` |
+| `cwwn` | a *Collected Works of Watchman Nee* volume | Watchman Nee | `cwwn-set-1-vol-12/` |
 
 ```bash
-python cwwn_vol_1.py "https://bibleread.online/all-books-by-Watchman-Nee-and-Witness-Lee/book-collected-works-of-watchman-nee-the-set-1-vol-01-the-christian-life-and-warfare-Watchman-Nee-read-online/"
+python -m webtoepub life-study https://bibleread.online/life-study-of-the-bible/life-study-of-romans/
+python -m webtoepub book https://bibleread.online/all-books-by-Watchman-Nee-and-Witness-Lee/book-abiding-in-the-lord-to-enjoy-his-life-Witness-Lee-read-online/
+python -m webtoepub cwwn "https://bibleread.online/all-books-by-Watchman-Nee-and-Witness-Lee/book-collected-works-of-watchman-nee-the-set-1-vol-12-the-spiritual-man-1-Watchman-Nee-read-online/"
 ```
 
-```bash
-python cwwn_vol_1.py "https://bibleread.online/all-books-by-Watchman-Nee-and-Witness-Lee/book-collected-works-of-watchman-nee-the-set-1-vol-02-the-word-of-the-cross-Watchman-Nee-read-online/"
-```
+Options (all sources):
 
-```bash
-python cwwn_vol_12_14.py "https://bibleread.online/all-books-by-Watchman-Nee-and-Witness-Lee/book-collected-works-of-watchman-nee-the-set-1-vol-12-the-spiritual-man-1-Watchman-Nee-read-online/"
-```
+| Option | Meaning |
+|---|---|
+| `--out DIR` | parent folder for the EPUB folder (default `output/`, git-ignored) |
+| `--skip-existing` | skip pages whose `NNN-*.epub` already exists, to resume a run |
+| `--delay S` | seconds between requests (default 1.2) |
+| `--cache DIR` | keep downloaded HTML and reuse it on later runs (no re-download) |
 
-Files are named `NNN-Title.epub` (zero-padded message/page number). Run without arguments to print a script's help text.
+`cwwn` only:
+
+| Option | Meaning |
+|---|---|
+| `--titles auto\|index\|page` | where titles come from (default `auto`, see below) |
+| `--overrides FILE` | section/chapter corrections, one `<page> <section> <chapter>` per line (`0` clears) |
+| `--no-prompt` | do not ask for corrections interactively |
+
+CWWN index pages come in two kinds. In Vol. 12–14 (*The Spiritual Man*) the index links carry each page's title with `section N` / `ch.N` markers; the run prints a table and lets you correct any page's section/chapter before scraping. In Vol. 01–02 they don't, so the title is each page's first descriptive heading and a bare `CHAPTER ONE` heading becomes the kicker. `auto` picks index titles when the index has any `section N` marker.
+
+Files are named `NNN-Title-Slug.epub`: zero-padded number, apostrophes dropped (`Gods-Choice`), other punctuation turned into dashes, at most 80 characters. All-caps titles from the site are converted to title case.
 
 ### Behaviour notes
 
-- Requests are throttled (1.0–1.5 s between pages) to be polite to the site.
-- Failed requests (connection errors, timeouts, HTTP 429/5xx) are retried up to 3 times with backoff. A page that still fails gets an EPUB with a placeholder note, and the run summary reports how many had no body.
-- Scraping depends on bibleread.online's current HTML layout. If the site changes, the noise filters (`_SKIP_TEXT_PATTERNS`, `BOILERPLATE_FRAGMENTS`) or link patterns may need updating.
+- Requests are throttled (`--delay`) and retried up to 3 times with backoff on connection errors, timeouts and HTTP 429/5xx. A page that still fails gets an EPUB with a placeholder note, and the run summary counts it.
+- Scraping depends on bibleread.online's current HTML. If the site changes, the filters in `webtoepub/clean.py` (`FOOTER_SENTINELS`, `NAV_PATTERNS`) or the link patterns in `webtoepub/sources/` may need updating. All filters only apply to short text (≤ 200 characters), so a real paragraph that mentions e.g. "Living Stream Ministry" is never treated as site UI.
 
-## How it works
+## Code layout
 
-1. **Discover**: fetch the index page and collect message/chapter links and titles.
-2. **Scrape**: fetch each page, keep `p` and `h1`–`h4` content, drop navigation and boilerplate, stop at the site footer, and de-duplicate repeated blocks.
-3. **Build**: assemble an EPUB with [EbookLib](https://github.com/aerkalov/ebooklib): CSS, a TOC page, a chapter page with heading anchors, and a nested TOC.
+```
+webtoepub/
+  cli.py          command line, run loop, CWWN correction prompt
+  fetch.py        HTTP session: retries, delay, optional HTML cache
+  clean.py        page -> content blocks: filters, header de-duplication, heading levels
+  epub_build.py   one EPUB builder used by every source
+  naming.py       filenames
+  model.py        Block / PageRef / Chapter / Series
+  sources/        index-page parsing per site section: life_study, books, cwwn
+tests/            pytest tests on small synthetic HTML
+```
+
+Run the tests:
+
+```bash
+pip install -r requirements-dev.txt
+python -m pytest
+```
 
 ## Generated output (`results/`)
-
-Previously generated EPUBs, moved here after each run:
 
 | Folder | Content | Files |
 |---|---|---|
@@ -79,9 +93,9 @@ Previously generated EPUBs, moved here after each run:
 | `life-study-of-exodus/` | Life-Study of Exodus | 185 |
 | `life-study-of-hebrews/` | Life-Study of Hebrews | 69 |
 | `life-study-of-romans/` | Life-Study of Romans | 69 |
-| `ccwn_vol01/` | CWWN Vol. 01: *The Christian Life and Warfare* | 23 |
-| `ccwn_vol02/` | CWWN Vol. 02: *The Word of the Cross* | 11 |
-| `ccwn_vol12/` – `ccwn_vol14/` | CWWN Vol. 12–14: *The Spiritual Man* | 15 / 16 / 12 |
+| `cwwn-set-1-vol-01/` | CWWN (1.01) - The Christian Life and Warfare | 23 |
+| `cwwn-set-1-vol-02/` | CWWN (1.02) - The Word of the Cross | 11 |
+| `cwwn-set-1-vol-12/` – `cwwn-set-1-vol-14/` | CWWN (1.12–1.14) - The Spiritual Man (1)–(3) | 15 / 16 / 12 |
 
 ## Copyright
 
