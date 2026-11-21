@@ -73,7 +73,8 @@ BOILERPLATE_FRAGMENTS = [
 def fetch(url: str) -> BeautifulSoup:
     resp = requests.get(url, headers=HEADERS, timeout=30)
     resp.raise_for_status()
-    return BeautifulSoup(resp.text, "lxml")
+    # Raw bytes → BeautifulSoup sniffs declared encoding (avoids mojibake).
+    return BeautifulSoup(resp.content, "lxml")
 
 
 def slugify(text: str) -> str:
@@ -526,7 +527,7 @@ def main():
             continue
         page_info[pg]["section"] = sec if sec != 0 else None
         page_info[pg]["chapter"] = ch  if ch  != 0 else None
-        print(f"  Page {pg} → section={page_info[pg]['section'] or '-'}, "
+        print(f"  Page {pg} -> section={page_info[pg]['section'] or '-'}, "
               f"chapter={page_info[pg]['chapter'] or '-'}")
 
     vol_match = re.search(r"-vol-(\d+)-", index_url)
@@ -568,7 +569,7 @@ def main():
             time.sleep(DELAY_SECONDS)
 
     print(f"\n{'='*60}")
-    print(f"Done: {success}/{total_pages} EPUB files saved → ./{output_dir}/")
+    print(f"Done: {success}/{total_pages} EPUB files saved -> ./{output_dir}/")
 
 
 if __name__ == "__main__":

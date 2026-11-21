@@ -15,10 +15,10 @@ Each EPUB includes:
 |---|---|---|---|
 | `life-studies.py` | A *Life-Study of the Bible* series index (`/life-study-of-the-bible/<series>/`) | Witness Lee | `./<series-slug>/` |
 | `bibleread-books.py` | Any book under `/all-books-by-Watchman-Nee-and-Witness-Lee/` | Detected from URL | `./<book-slug>/` |
-| `cwwn_vol_1.py` | *Collected Works of Watchman Nee*, Set 1, Vol. 01 | Watchman Nee | `./ccwn_vol01/` |
+| `cwwn_vol_1.py` | *Collected Works of Watchman Nee*, Set 1, Vol. 01–02 | Watchman Nee | `./ccwn_vol<NN>/` |
 | `cwwn_vol_12_14.py` | *Collected Works of Watchman Nee*, Set 1, Vol. 12–14 (*The Spiritual Man*) | Watchman Nee | `./ccwn_vol<NN>/` |
 
-`cwwn_vol_12_14.py` reads section and chapter numbers from the index page and shows them above each title. It prints a table first and then **prompts** you to correct any page's section/chapter (`<page> <section> <chapter>`, `0` clears a value; press Enter on a blank line to continue). Vol. 01's index has no such markers, so `cwwn_vol_1.py` takes titles from each page's first `<h1>` and does not prompt.
+`cwwn_vol_12_14.py` reads section and chapter numbers from the index page and shows them above each title. It prints a table first and then **prompts** you to correct any page's section/chapter (`<page> <section> <chapter>`, `0` clears a value; press Enter on a blank line to continue). Vol. 01–02 indexes have no usable section/chapter markers, so `cwwn_vol_1.py` takes titles from each page's first descriptive `<h1>` (skipping bare headings like `CHAPTER ONE`) and does not prompt.
 
 ## Setup
 
@@ -50,6 +50,10 @@ python cwwn_vol_1.py "https://bibleread.online/all-books-by-Watchman-Nee-and-Wit
 ```
 
 ```bash
+python cwwn_vol_1.py "https://bibleread.online/all-books-by-Watchman-Nee-and-Witness-Lee/book-collected-works-of-watchman-nee-the-set-1-vol-02-the-word-of-the-cross-Watchman-Nee-read-online/"
+```
+
+```bash
 python cwwn_vol_12_14.py "https://bibleread.online/all-books-by-Watchman-Nee-and-Witness-Lee/book-collected-works-of-watchman-nee-the-set-1-vol-12-the-spiritual-man-1-Watchman-Nee-read-online/"
 ```
 
@@ -78,6 +82,7 @@ Previously generated EPUBs, moved here after each run:
 | `life-study-of-hebrews/` | Life-Study of Hebrews | 69 |
 | `life-study-of-romans/` | Life-Study of Romans | 69 |
 | `ccwn_vol01/` | CWWN Vol. 01: *The Christian Life and Warfare* | 23 |
+| `ccwn_vol02/` | CWWN Vol. 02: *The Word of the Cross* | 11 |
 | `ccwn_vol12/` – `ccwn_vol14/` | CWWN Vol. 12–14: *The Spiritual Man* | 15 / 16 / 12 |
 
 ## Copyright

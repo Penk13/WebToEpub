@@ -2,15 +2,16 @@
 """
 cwwn_vol_1.py
 -------------
-Converts "Collected Works of Watchman Nee (Set 1) Vol. 01: The Christian Life
-and Warfare" on bibleread.online into one EPUB file per page, with Calibre
-series metadata.
+Converts "Collected Works of Watchman Nee (Set 1)" volumes on bibleread.online
+into one EPUB file per page, with Calibre series metadata. Works for Vol. 01
+and Vol. 02 (The Word of the Cross).
 
 Differences from cwwn_vol_12_14.py:
-  - The vol-01 index page's #cont anchors carry sub-heading text, NOT page
-    titles with "section N" / "ch.N" markers, so section/chapter metadata
-    is not available.
-  - Page titles are taken from each page's own first <h1> heading.
+  - The index page's #cont anchors carry sub-heading text, NOT reliable page
+    titles with "section N" / "ch.N" markers, so section/chapter metadata is
+    not available.
+  - Page titles are taken from each page's own first descriptive <h1> heading;
+    bare structural headings such as "CHAPTER ONE" are skipped.
   - No subtitle line ("Section X  •  Chapter Y") above the title.
   - No interactive override prompt.
 
@@ -19,9 +20,10 @@ Usage:
 
 Example:
     python cwwn_vol_1.py "https://bibleread.online/all-books-by-Watchman-Nee-and-Witness-Lee/book-collected-works-of-watchman-nee-the-set-1-vol-01-the-christian-life-and-warfare-Watchman-Nee-read-online/"
+    python cwwn_vol_1.py "https://bibleread.online/all-books-by-Watchman-Nee-and-Witness-Lee/book-collected-works-of-watchman-nee-the-set-1-vol-02-the-word-of-the-cross-Watchman-Nee-read-online/"
 
 Output:
-    ./ccwn_vol01/<NNN>-<Title>.epub
+    ./ccwn_vol<NN>/<NNN>-<Title>.epub
 """
 
 import re
@@ -51,6 +53,8 @@ HEADERS = {
     "Upgrade-Insecure-Requests": "1",
 }
 DELAY_SECONDS = 1.5
+FETCH_TIMEOUT = (30, 90)   # site can stall on the read phase
+FETCH_RETRIES = 3
 OUTPUT_DIR = Path("output")
 
 BOILERPLATE_FRAGMENTS = [
@@ -77,9 +81,19 @@ BOILERPLATE_FRAGMENTS = [
 # ---------------------------------------------------------------------------
 
 def fetch(url: str) -> BeautifulSoup:
-    resp = requests.get(url, headers=HEADERS, timeout=30)
-    resp.raise_for_status()
-    return BeautifulSoup(resp.text, "lxml")
+    last_exc: Exception | None = None
+    for attempt in range(1, FETCH_RETRIES + 1):
+        try:
+            resp = requests.get(url, headers=HEADERS, timeout=FETCH_TIMEOUT)
+            resp.raise_for_status()
+            # Raw bytes → BeautifulSoup sniffs declared encoding (avoids mojibake).
+            return BeautifulSoup(resp.content, "lxml")
+        except requests.RequestException as exc:
+            last_exc = exc
+            print(f"  fetch failed ({attempt}/{FETCH_RETRIES}): {exc}")
+            if attempt < FETCH_RETRIES:
+                time.sleep(3 * attempt)
+    raise last_exc  # type: ignore[misc]
 
 
 def slugify(text: str) -> str:
@@ -98,6 +112,10 @@ MAX_BOILERPLATE_LENGTH = 200
 NAV_LINE = re.compile(
     r"^(←|→|ch\.|\d+\s*/|\s*ch\s+\d)|^(Listen|Back|Show|Hide)\b(\s+\w+)?$", re.I
 )
+
+# Vol. 02+ pages start with a bare structural heading ("CHAPTER ONE") followed
+# by the real message title. Vol. 01 pages have only descriptive headings.
+GENERIC_HEADING = re.compile(r"^(?:chapter|section)\s+(?:[ivxlcdm]+|[a-z]+)$", re.I)
 
 
 def is_boilerplate(text: str) -> bool:
@@ -165,9 +183,20 @@ def parse_index(index_url: str):
 # ---------------------------------------------------------------------------
 
 def page_title(soup: BeautifulSoup) -> str:
-    """Return the page's first <h1> heading text (used as the EPUB title)."""
-    h1 = soup.find("h1")
-    return h1.get_text(separator=" ", strip=True) if h1 else "Page"
+    """
+    Return the first descriptive <h1> heading (used as the EPUB title).
+
+    Some volumes prefix the message title with a bare structural heading such
+    as "CHAPTER ONE"; that heading is skipped so the filename is meaningful.
+    """
+    headings = soup.find_all("h1")
+    for h1 in headings:
+        text = h1.get_text(separator=" ", strip=True)
+        if text and not GENERIC_HEADING.match(text):
+            return text
+    if headings:
+        return headings[0].get_text(separator=" ", strip=True)
+    return "Page"
 
 
 def scrape_page(soup: BeautifulSoup) -> str:
@@ -450,7 +479,7 @@ def main():
             time.sleep(DELAY_SECONDS)
 
     print(f"\n{'='*60}")
-    print(f"Done: {success}/{total_pages} EPUB files saved → ./{output_dir}/")
+    print(f"Done: {success}/{total_pages} EPUB files saved -> ./{output_dir}/")
 
 
 if __name__ == "__main__":
