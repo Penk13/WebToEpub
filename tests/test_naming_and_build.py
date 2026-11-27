@@ -67,3 +67,10 @@ def test_build_epub_is_valid_and_escaped(tmp_path):
     # Opens on the contents page, then the chapter; nav is not in the spine.
     assert opf.index('idref="contents"') < opf.index('idref="chapter"')
     assert 'idref="nav"' not in opf
+
+
+def test_cwwn_series_name_comma_separator():
+    # Vol. 03's index heading uses "Vol. 03," where Vol. 12 uses "Vol. 12:".
+    url = "https://x/book-collected-works-of-watchman-nee-the-set-1-vol-03-the-christian-1-Watchman-Nee-read-online/"
+    title = "Collected Works of Watchman Nee, The (Set 1) Vol. 03, The Christian (1)"
+    assert series_name(title, url) == ("CWWN (1.03) - The Christian (1)", "cwwn-set-1-vol-03")

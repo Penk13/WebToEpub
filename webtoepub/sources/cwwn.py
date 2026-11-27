@@ -51,7 +51,7 @@ def series_name(book_title: str, url: str) -> tuple[str, str]:
     if not m:
         return book_title, "cwwn"
     set_no, vol = int(m.group(1)), int(m.group(2))
-    sub = re.search(r"Vol\.?\s*\d+\s*:\s*(.+)$", book_title)
+    sub = re.search(r"Vol\.?\s*\d+\s*[:,]\s*(.+)$", book_title)
     name = f"CWWN ({set_no}.{vol:02d}) - {sub.group(1).strip() if sub else book_title}"
     return name, f"cwwn-set-{set_no}-vol-{vol:02d}"
 

@@ -57,6 +57,8 @@ Options (all sources):
 
 CWWN index pages come in two kinds. In Vol. 12–14 (*The Spiritual Man*) the index links carry each page's title with `section N` / `ch.N` markers; the run prints a table and lets you correct any page's section/chapter before scraping. In Vol. 01–02 they don't, so the title is each page's first descriptive heading and a bare `CHAPTER ONE` heading becomes the kicker. `auto` picks index titles when the index has any `section N` marker.
 
+Vol. 03 needs `--titles page`: its index has a single stray `section 1` marker, so `auto` picks index titles, which carry "1." prefixes and wrong chapter numbers.
+
 Files are named `NNN-Title-Slug.epub`: zero-padded number, apostrophes dropped (`Gods-Choice`), other punctuation turned into dashes, at most 80 characters. All-caps titles from the site are converted to title case.
 
 ### Behaviour notes
@@ -95,6 +97,7 @@ python -m pytest
 | `life-study-of-romans/` | Life-Study of Romans | 69 |
 | `cwwn-set-1-vol-01/` | CWWN (1.01) - The Christian Life and Warfare | 23 |
 | `cwwn-set-1-vol-02/` | CWWN (1.02) - The Word of the Cross | 11 |
+| `cwwn-set-1-vol-03/` | CWWN (1.03) - The Christian (1) (built with `--titles page`) | 9 |
 | `cwwn-set-1-vol-12/` – `cwwn-set-1-vol-14/` | CWWN (1.12–1.14) - The Spiritual Man (1)–(3) | 15 / 16 / 12 |
 
 ## Copyright

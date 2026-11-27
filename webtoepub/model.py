@@ -7,9 +7,9 @@ from dataclasses import dataclass, field
 class Block:
     """One piece of body content. Text is plain (unescaped)."""
 
-    kind: str  # "h" (heading), "p" (paragraph) or "quote" (blockquote)
+    kind: str  # "h" (heading), "p" (paragraph), "quote" (blockquote) or "li" (list item)
     text: str
-    level: int = 0  # heading level 1-6; 0 for non-headings
+    level: int = 0  # heading level 1-6; list nesting depth (1+) for "li"; else 0
 
 
 @dataclass

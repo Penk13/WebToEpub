@@ -110,3 +110,46 @@ def test_smart_title():
     assert smart_title("THE WORD OF THE CROSS") == "The Word of the Cross"
     assert smart_title("UNIVERSAL FATHERHOOD: A FALLACY") == "Universal Fatherhood: A Fallacy"
     assert smart_title("Living by faith") == "Living by faith"  # not all caps: unchanged
+
+
+def test_nested_lists_become_li_blocks_with_markers():
+    html = (
+        "<h1>LESSON ONE</h1>"
+        '<ol class="upper-roman"><li>Not understanding:'
+        '<ol class="upper-alpha"><li>"Soulish man" (<a href="#">1 Cor. 2:14</a>)</li>'
+        '<li>Believe first<ol class="decimal" start="3"><li>Deep</li></ol></li></ol></li>'
+        "<li>Second point</li></ol><p>After.</p>"
+    )
+    assert extract_blocks(soup(html)) == [
+        Block("h", "LESSON ONE", 1),
+        Block("li", "I. Not understanding:", 1),
+        Block("li", 'A. "Soulish man" ( 1 Cor. 2:14 )', 2),
+        Block("li", "B. Believe first", 2),
+        Block("li", "3. Deep", 3),
+        Block("li", "II. Second point", 1),
+        Block("p", "After."),
+    ]
+
+
+def test_footer_inside_list_stops_reading():
+    html = "<ul><li>Item.</li><li>Living Stream Ministry</li></ul><p>After footer.</p>"
+    assert extract_blocks(soup(html)) == [Block("li", "\u2022 Item.", 1)]
+
+
+def test_loose_br_separated_lines_are_kept():
+    # CWWN Vol. 03 page 9: outline lines are bare text between <br/>, not in <p>.
+    html = (
+        "<div><h2>The detailed outline</h2>"
+        "<p>I. The Things Which You Have Seen</p>"
+        "<br/>   A. Introduction \u2014 vv. 1-3"
+        "<br/>   B. Greeting and <i>Blessing</i> \u2014 vv. 4-5"
+        "<p>Chapter Two</p></div>"
+        '<div class="footer"><br/>Menu text</div>'
+    )
+    assert extract_blocks(soup(html)) == [
+        Block("h", "The detailed outline", 2),
+        Block("p", "I. The Things Which You Have Seen"),
+        Block("p", "A. Introduction \u2014 vv. 1-3"),
+        Block("p", "B. Greeting and Blessing \u2014 vv. 4-5"),
+        Block("p", "Chapter Two"),
+    ]

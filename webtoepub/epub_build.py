@@ -21,6 +21,7 @@ h2 { font-size: 1.2em; margin-top: 1.2em; }
 h3 { font-size: 1.1em; margin-top: 1em; }
 h4, h5, h6 { font-size: 1em; margin-top: 1em; }
 p { margin: 0.6em 0; text-align: justify; }
+.li { text-align: left; margin: 0.3em 0; text-indent: -1.5em; }
 blockquote { border-left: 3px solid #ccc; margin: 0.8em 0 0.8em 1em; padding-left: 1em; }
 .kicker { font-family: sans-serif; font-size: 0.85em; color: #666;
           letter-spacing: 0.05em; text-transform: uppercase; margin: 0; text-align: left; }
@@ -54,6 +55,10 @@ def _render_body(anchored: list[tuple[Block, str]]) -> str:
         text = escape(b.text)
         if b.kind == "h":
             parts.append(f'<h{b.level} id="{anchor}">{text}</h{b.level}>')
+        elif b.kind == "li":
+            # Flat, indented paragraphs: e-readers render nested <ol> poorly
+            # and the marker ("I.", "A.") is already part of the text.
+            parts.append(f'<p class="li" style="margin-left:{b.level * 1.5}em">{text}</p>')
         elif b.kind == "quote":
             parts.append(f"<blockquote><p>{text}</p></blockquote>")
         else:
